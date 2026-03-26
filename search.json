@@ -1,0 +1,23 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Hello",
+    "section": "",
+    "text": "Hello! This is a Quarto website.\nTo learn more about Quarto websites, visit https://quarto.org/docs/websites/."
+  },
+  {
+    "objectID": "index.html#hello-quarto",
+    "href": "index.html#hello-quarto",
+    "title": "Welcome to Quarto",
+    "section": "Hello, Quarto",
+    "text": "Hello, Quarto\n\nPython R Julia Observable\n\nCombine Jupyter notebooks with flexible options to produce production quality output in a wide variety of formats. Author using traditional notebook UIs or with a plain text markdown representation of notebooks.\n\n\nDynamic Documents\nGenerate dynamic output using Python, R, Julia, and Observable. Create reproducible documents that can be regenerated when underlying assumptions or data change.\nLearn more »\n\n\nBeautiful Publications\nPublish high-quality articles, reports, presentations, websites, and books in HTML, PDF, MS Word, ePub, and more. Use a single source document to target multiple formats.\nLearn more »\n\n\nScientific Markdown\nPandoc markdown has excellent support for LaTeX equations and citations. Quarto adds extensions for cross-references, figure panels, callouts, advanced page layout, and more.\nLearn more »\n\n\nAuthoring Tools\nUse your favorite tools including Positron, VS Code, RStudio, Jupyter Lab, or any text editor. Use the Quarto visual markdown editor for long-form documents.\nLearn more »\n\n\nInteractivity\nEngage readers by adding interactive data exploration to your documents using Jupyter Widgets, htmlwidgets for R, Observable JS, and Shiny.\nLearn more »\n\n\nWebsites and Books\nPublish collections of documents as a blog or full website. Create books and manuscripts in both print formats (PDF and MS Word) and online formats (HTML and ePub).\nLearn more »"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "This is a simple Quarto website for FinTech 533."
+  }
+]
