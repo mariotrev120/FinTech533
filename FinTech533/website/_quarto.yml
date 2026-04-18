@@ -1,0 +1,22 @@
+project:
+  type: website
+  output-dir: ../../docs
+  post-render:
+    - scripts/strip_dashes.sh
+
+website:
+  title: "FinTech533"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: about.qmd
+        text: About
+      - href: hw5_breakout.qmd
+        text: "HW5: Breakout Strategy"
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true

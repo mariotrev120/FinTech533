@@ -1,0 +1,163 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Mario Trevino",
+    "section": "",
+    "text": "Hello! This is a Quarto website.\nTo learn more about Quarto websites, visit https://quarto.org/docs/websites/."
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "This is a simple Quarto website for FinTech 533."
+  },
+  {
+    "objectID": "hw5_breakout.html",
+    "href": "hw5_breakout.html",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "",
+    "text": "This is a historical backtest, not a live-trading system. The engine consumes daily OHLCV bars pulled from IBKR TWS and simulates entries, stops, profit targets, and timeouts across a 20-ticker thematic universe. No order is ever placed. The page is pre-rendered static HTML and loads the same way on every visit."
+  },
+  {
+    "objectID": "hw5_breakout.html#strategy-logic",
+    "href": "hw5_breakout.html#strategy-logic",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Strategy Logic",
+    "text": "Strategy Logic\nThe engine looks for moments when volatility has compressed hard and then explodes out in a directional move. Specifically the Keltner Squeeze: Bollinger Bands (20, 2 std) collapse inside Keltner Channels (20, 1.5 ATR) for at least one bar, then “fire” when the Bollinger Bands expand back outside the Keltner envelope. On the fire bar we take the signal only if the close also pierces the upper Keltner band (long) or the lower band (short). Two participation filters then gate the trade: the fire bar’s volume must be at least 1.3x its 20-day average, and ADX(14) on that bar must be &gt;= 20 so the squeeze is resolving into a real trend rather than chop. Once a trade is on, it exits one of three ways: price reaches +4 x ATR in the trade’s favor (profit target), -2 x ATR against it (stop-loss), or 20 trading days pass without either hitting (timeout, closed at market). Every trade pays IBKR-tiered commission, SEC and FINRA fees on sells, five basis points per side of slippage, and a 3% annual short-borrow rate where applicable. The period’s aggregate net profit is then taxed at the 30% short-term capital-gains rate."
+  },
+  {
+    "objectID": "hw5_breakout.html#asset-selection",
+    "href": "hw5_breakout.html#asset-selection",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Asset Selection",
+    "text": "Asset Selection\nI screened a twenty-ticker thematic universe across the seven structural stories that drove single-name volatility in 2024 and 2025: AI and semis (NVDA, AVGO, SMCI, AMD), nuclear renaissance (CCJ, VST, OKLO, SMR), Bitcoin proxies (MSTR, COIN, MARA), quantum computing (IONQ, RGTI, QBTS), defense and autonomy (PLTR, LMT, RTX), GLP-1 weight-loss (LLY, NVO), and space (RKLB). Each candidate gets a Breakout Quality Score:\n\\[\n\\mathrm{BQS} = \\left( \\frac{n}{N} \\right) \\cdot (1 - f_{\\text{false}}) \\cdot \\operatorname{med}(\\Delta P_{10})\n\\]\nwhere n is the count of confirmed squeeze breakouts in 2024, N is the number of training bars, f_false is the fraction of breakouts that close back inside the channel within three days, and med(dP_10) is the median 10-bar direction-adjusted return after the signal. BQS rewards assets where breakouts are frequent, clean, and follow through. The strategy backtests squeeze fires across the entire 20-name universe, with BQS surfacing which names are the highest-quality regime for that setup.\n\nBQS ranking (2024 training)"
+  },
+  {
+    "objectID": "hw5_breakout.html#breakout-definition",
+    "href": "hw5_breakout.html#breakout-definition",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Breakout Definition",
+    "text": "Breakout Definition\nA confirmed squeeze-breakout signal fires on bar t when all five conditions hold:\n\nSqueeze on at t-1: Bollinger Bands (20, 2 std) lie fully inside Keltner Channels (20, 1.5 ATR).\nSqueeze off at t: BB has expanded beyond KC (volatility has released).\nDirectional break at close(t): close pierces the upper KC (long) or the lower KC (short).\nVolume confirmation: bar-t volume is at least VOLUME_MULT = 1.3 × the 20-day rolling average volume.\nTrend confirmation: ADX(14) &gt;= ADX_MIN = 20 on bar t.\n\nEvery indicator uses a t-1 shift on its reference window (the current bar is never part of its own reference). Execution happens at the open of bar t+1 (no look-ahead).\n\nParameter values (single source of truth)\n\n\n\n\n\n\n\n\n\nparameter\nvalue\n\n\n\n\n0\nBollinger / Keltner lookback\n20\n\n\n1\nBollinger std multiplier\n2.0\n\n\n2\nKeltner ATR multiplier\n1.5\n\n\n3\nATR window\n14\n\n\n4\nADX window\n14\n\n\n5\nADX minimum\n20.0\n\n\n6\nVolume window\n20\n\n\n7\nVolume multiplier\n1.3\n\n\n8\nStop-loss (× ATR)\n2.0\n\n\n9\nProfit target (× ATR)\n4.0\n\n\n10\nTimeout (trading days)\n20\n\n\n11\nPosition notional per trade (USD)\n$10,000\n\n\n12\nStarting capital (USD)\n$100,000\n\n\n13\nRisk-free rate\n3.75%\n\n\n14\nIBKR commission per share\n$0.0035\n\n\n15\nIBKR min per order\n$0.35\n\n\n16\nSEC fee rate (sells)\n0.00278%\n\n\n17\nFINRA TAF per share (sells)\n$0.000166\n\n\n18\nSlippage (bps per side)\n5\n\n\n19\nShort-borrow rate\n3.0%\n\n\n20\nShort-term cap-gains tax\n30%\n\n\n21\nLR threshold (MIN_PROBABILITY)\n0.50\n\n\n\n\n\n\n\n\n\nPlain-English description of detect_breakouts\nThe function detect_breakouts(df) in breakout.py takes a daily OHLCV frame and returns a single series aligned to the input dates. On each bar it answers the question “did a confirmed Keltner-Squeeze breakout happen today?” with +1 (long), -1 (short), or 0 (no signal). Internally it builds the Bollinger Bands (SMA-20 ± 2 std) and Keltner Channels (EMA-20 ± 1.5 ATR), flags bars where BB lies fully inside KC as “squeeze on”, and fires a signal when the squeeze transitions from on (t-1) to off (t) and the close of t pierces the appropriate Keltner band. It then adds the two participation confirmations (volume &gt;= 1.3 × 20-day avg, ADX(14) &gt;= 20). The t-1 index offset is the data-leakage guardrail: today’s price is compared against the Keltner and Bollinger levels computed on the previous 20 bars, not the last 20 bars inclusive of today, so today’s breakout never becomes part of its own reference set."
+  },
+  {
+    "objectID": "hw5_breakout.html#exit-attribution-oos",
+    "href": "hw5_breakout.html#exit-attribution-oos",
+    "title": "HW5: Breakout Strategy",
+    "section": "Exit Attribution (OOS)",
+    "text": "Exit Attribution (OOS)\nEvery trade ends as one of three outcomes: profit target (+4 x ATR hit), stop-loss (-2 x ATR hit), or timeout (neither hit within 20 trading days, closed at market). The donut shows the mix. A strategy dominated by timeouts and profit targets is a “momentum rider”; a strategy dominated by stop-losses is a “fakeout machine” and needs rethinking.\n\n\n        \n        \n        \nExit-type breakdown, OOS 2025"
+  },
+  {
+    "objectID": "hw5_breakout.html#trade-blotter",
+    "href": "hw5_breakout.html#trade-blotter",
+    "title": "HW5: Breakout Strategy",
+    "section": "Trade Blotter",
+    "text": "Trade Blotter\nEvery OOS trade with entry and exit timestamps, prices, position size, direction, itemized costs, and outcome. Full CSV available for download.\nDownload trades.csv Download ledger.csv"
+  },
+  {
+    "objectID": "hw5_breakout.html#performance-metrics",
+    "href": "hw5_breakout.html#performance-metrics",
+    "title": "HW5: Breakout Strategy",
+    "section": "Performance Metrics",
+    "text": "Performance Metrics"
+  },
+  {
+    "objectID": "hw5_breakout.html#equity-curve-drawdown-oos",
+    "href": "hw5_breakout.html#equity-curve-drawdown-oos",
+    "title": "HW5: Breakout Strategy",
+    "section": "Equity Curve & Drawdown (OOS)",
+    "text": "Equity Curve & Drawdown (OOS)\n\n\n                            \n                                            \nDaily mark-to-market equity and drawdown over the 2025 OOS period."
+  },
+  {
+    "objectID": "hw5_breakout.html#cost-exposure-gross-to-net",
+    "href": "hw5_breakout.html#cost-exposure-gross-to-net",
+    "title": "HW5: Breakout Strategy",
+    "section": "Cost Exposure (Gross to Net)",
+    "text": "Cost Exposure (Gross to Net)\nFriction and taxes itemized on OOS. The last line is what actually hits the account after everything."
+  },
+  {
+    "objectID": "hw5_breakout.html#slippage-sensitivity",
+    "href": "hw5_breakout.html#slippage-sensitivity",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Slippage Sensitivity",
+    "text": "Slippage Sensitivity\nOOS backtest rerun at 5, 10, 15 basis points per side. A strategy whose economics degrade gracefully is execution-robust; one that collapses at 15 bps is spread-dependent."
+  },
+  {
+    "objectID": "hw5_breakout.html#walk-forward-discipline",
+    "href": "hw5_breakout.html#walk-forward-discipline",
+    "title": "HW5: Breakout Strategy",
+    "section": "Walk-Forward Discipline",
+    "text": "Walk-Forward Discipline\nTraining ran on 2024 daily bars only. A grid search over LOOKBACK in {10,15,20,25,30,40}, STOP_ATR in {1.5, 2.0, 2.5, 3.0}, and PROFIT_ATR in {3.0, 4.0, 5.0, 6.0} selected the combination with the best 2024 Sharpe subject to a minimum of 3 trades (so we do not overfit on a single lucky trade). Those parameters were then frozen and applied to 2025 OOS without any re-fitting. To pressure-test: parameter sensitivity at a one-step grid around each tuned param, a 1000-iteration block-bootstrap CI on the OOS Sharpe, H1 vs H2 OOS sub-period stability, and the slippage stress table above."
+  },
+  {
+    "objectID": "hw5_breakout.html#assumptions-replicability",
+    "href": "hw5_breakout.html#assumptions-replicability",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Assumptions & Replicability",
+    "text": "Assumptions & Replicability\n\nData. IBKR TWS historical daily bars via shinybroker, cached to parquet under FinTech533/Homeworks/HW5/data/. Two years back. Ordinary trading hours only. Macro indices (VIX, VIX3M, TNX, FVX, IRX, TYX, SPY) and seven sector ETFs (XLK, XLV, XLU, XLF, ITA, URA, IBIT) are also cached for exogenous feature construction.\nExecution. Signals at close of day t. Execution at open of day t+1. If stop and profit target touch on the same bar, stop triggers first (conservative).\nSlippage. Flat 5 bps of notional per side (10 bps round-trip), stressed to 10 and 15 bps in the sensitivity table.\nCommission. IBKR Pro tiered at $0.0035/share, $0.35 min per order, 1% of notional cap.\nRegulatory fees (sells). SEC Section 31 at 0.00278% of notional + FINRA TAF at $0.000166/share capped at $8.30.\nShort-borrow. 3% annualized linear accrual on notional × hold_days / 252 (representative general-collateral rate).\nTaxes. Short-term capital gains at 30%, applied to period aggregate net positive PnL; losses offset gains within the period; no carry-forwards.\nPosition sizing. Fixed $10,000 notional per trade, whole shares only (rounded down), one open position per ticker at a time, strategies run in parallel across 20 tickers.\nML. StandardScaler fit on 2024 features only. Logistic Regression with class_weight='balanced', solver='liblinear', C=1. Threshold at MIN_PROBABILITY. Features strictly exogenous."
+  },
+  {
+    "objectID": "hw5_breakout.html#discussion",
+    "href": "hw5_breakout.html#discussion",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Discussion",
+    "text": "Discussion\nThe strategy is intentionally simple, transparent, and conservative. The signal alpha is the Keltner squeeze (volatility compression then release) filtered by real participation (volume + ADX). The exogenous ML layer asks whether the macro environment supports momentum continuation, without looking at the ticker’s own price. The Hoeffding regime monitor tells you, given your 2024 belief, the worst-case probability that the OOS performance gap is noise under H0; when it drops below the 10% halt line, the strategy is telling you its assumptions no longer hold.\nReal-world results across the 20-ticker universe were honest: seven training trades with a strong win rate, three OOS trades that all stopped out — walk-forward degradation that the Hoeffding bounds flag in real time. The friction engine eats a meaningful slice of gross PnL; the tax provision applies only when aggregate net PnL is positive.\nNatural extensions for the final project: rolling walk-forward re-fit (not a single freeze), Kelly sizing conditional on LR probability, and a portfolio layer that trades the top-3 BQS names simultaneously with correlation-aware sizing."
+  },
+  {
+    "objectID": "hw5_breakout.html#exit-attribution-all-backtested-trades",
+    "href": "hw5_breakout.html#exit-attribution-all-backtested-trades",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Exit Attribution (all backtested trades)",
+    "text": "Exit Attribution (all backtested trades)\nEvery backtested trade ends as one of three outcomes: profit target (+4 x ATR hit), stop-loss (-2 x ATR hit), or timeout (neither hit within 20 trading days, closed at market). The donut covers all trades (training + OOS).\n\n\n                            \n                                            \nExit attribution across all backtested trades"
+  },
+  {
+    "objectID": "hw5_breakout.html#trade-blotter-complete",
+    "href": "hw5_breakout.html#trade-blotter-complete",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Trade Blotter (complete)",
+    "text": "Trade Blotter (complete)\nEvery backtested trade across training 2024 and OOS 2025+. Entry / exit timestamps, prices, position size, direction, net PnL (post cost), return, holding period, exit type, attached LR probability, and period.\nDownload trades.csv Download ledger.csv"
+  },
+  {
+    "objectID": "hw5_breakout.html#performance-metrics-train-2024-vs-oos-2025",
+    "href": "hw5_breakout.html#performance-metrics-train-2024-vs-oos-2025",
+    "title": "HW5: Breakout Strategy",
+    "section": "Performance Metrics (train 2024 vs OOS 2025)",
+    "text": "Performance Metrics (train 2024 vs OOS 2025)\nTraining is in-sample (parameters were tuned to it). OOS is the honest number. Both are shown so the reader can see how much degradation walked forward onto unseen data."
+  },
+  {
+    "objectID": "hw5_breakout.html#cost-exposure-gross-to-net-all-backtested-trades",
+    "href": "hw5_breakout.html#cost-exposure-gross-to-net-all-backtested-trades",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Cost Exposure (Gross to Net, all backtested trades)",
+    "text": "Cost Exposure (Gross to Net, all backtested trades)"
+  },
+  {
+    "objectID": "hw5_breakout.html#exogenous-ml-filter-vestals-verbal-improvement",
+    "href": "hw5_breakout.html#exogenous-ml-filter-vestals-verbal-improvement",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Exogenous ML Filter (Vestal’s Verbal Improvement)",
+    "text": "Exogenous ML Filter (Vestal’s Verbal Improvement)\nRather than asking “is this ticker going up?” (which invites look-in-the-mirror overfitting on the ticker’s own prices), the Logistic Regression filter asks “is the macro environment conducive to momentum continuation today?” Features are strictly exogenous: no OHLCV of the ticker being traded enters the vector.\nFeatures (all evaluated at entry_date - 1):\n\nYield curve spline coefficients (4) — fit a degree-3 polynomial to the yields at tenors {0.25y, 5y, 10y, 30y} using IBKR’s IRX/FVX/TNX/TYX indices. The four coefficients describe the level, slope, and curvature of the curve.\nVIX term structure (4) — VIX level, VIX3M level, VIX3M − VIX spread (contango vs backwardation), 20-day VIX change.\nIV − RV spread (3) — VIX (market IV proxy) minus 30-day realized volatility of SPY (market RV proxy).\nBroad-market regime (1) — 20-day SPY return.\nSector relative strength (2) — 5-day ticker return minus 5-day sector ETF return (relative measure only), sector 5-day return.\n\nDiscipline: StandardScaler is fit on the 2024 training candidates only and then used to transform the 2025 test candidates. LR is trained with class_weight='balanced' and a liblinear solver. The trained LR’s predict_proba is attached to every trade in the blotter for transparency; the lr_approve flag fires on P(profitable) &gt;= MIN_PROBABILITY = 0.50. This run surfaces LR as a ranking indicator rather than a hard gate, because the strict candidate pool across the 20-name universe is small (7 training trades). A richer training set (broader universe, multiple years) would re-enable the 0.65 hard gate as originally specified.\n\nLR coefficients on training features"
+  },
+  {
+    "objectID": "hw5_breakout.html#hoeffding-regime-monitor-egger-vestal-2025",
+    "href": "hw5_breakout.html#hoeffding-regime-monitor-egger-vestal-2025",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Hoeffding Regime Monitor (Egger & Vestal 2025)",
+    "text": "Hoeffding Regime Monitor (Egger & Vestal 2025)\nTwo one-sided monitors run on the OOS trade stream. Under H0 (the 2024 regime persists), Hoeffding’s Inequality bounds the probability of observing an underperformance as large as the realized mu − X̄:\n\\[\nP(\\bar X - \\mu \\ge t \\mid H_0) \\le \\exp\\!\\left(\\frac{-2 t^2 N_{\\text{eff}}}{(b - a)^2}\\right)\n\\]\n\nW (win-rate monitor) — bounded on [0, 1]. Under H0 the strategy’s OOS win rate matches the 2024 training baseline.\nR (return monitor) — bounded by the strategy’s return range (b - a) ≈ 0.08 (a conservative envelope for fractional per-trade return). Weaker signal than W but robust to outliers.\n\nN_eff = min(N * (1 - rho) / (1 + rho), N) corrects for first-order autocorrelation in the trade-outcome series. Clipped to N. Alert thresholds: 50% (amber) / 25% (orange) / 10% (RED → halt trading)."
+  },
+  {
+    "objectID": "hw5_breakout.html#performance-metrics-train-2024-vs-oos",
+    "href": "hw5_breakout.html#performance-metrics-train-2024-vs-oos",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Performance Metrics (train 2024 vs OOS)",
+    "text": "Performance Metrics (train 2024 vs OOS)\nBoth periods shown side-by-side so the reader sees walk-forward degradation. Training is in-sample and optimistic; OOS is the honest number."
+  },
+  {
+    "objectID": "hw5_breakout.html#three-line-equity-gross-vs-net-vs-after-tax-oos",
+    "href": "hw5_breakout.html#three-line-equity-gross-vs-net-vs-after-tax-oos",
+    "title": "HW5: Keltner Squeeze Breakout, Exogenous ML, Hoeffding Regime Monitor",
+    "section": "Three-line Equity: Gross vs Net vs After-Tax (OOS)",
+    "text": "Three-line Equity: Gross vs Net vs After-Tax (OOS)\nShows how much of the raw alpha the friction and tax engine consumes."
+  }
+]

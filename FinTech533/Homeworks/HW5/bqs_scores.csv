@@ -1,0 +1,21 @@
+n_breakouts,n_bars,fade_rate,followthrough,bqs,symbol,theme,rationale
+1,252,0.0,0.19185520361990943,0.0007613301730948787,OKLO,Nuclear,Small modular reactor developer
+2,252,0.5,0.14303321096848892,0.0005675921070178131,SMR,Nuclear,NuScale SMR
+1,252,0.0,0.1132404181184668,0.00044936673856534444,PLTR,Defense / AI,Gov-AI platform
+5,252,0.6,0.027574690856575435,0.00021884675282996376,LMT,Defense / AI,Defense prime
+3,252,0.0,0.017574975814253407,0.0002092259025506358,RTX,Defense / AI,Aerospace + missiles
+2,252,0.5,0.02546759933123968,0.00010106190210809395,CCJ,Nuclear,Uranium miner
+1,252,0.0,0.020602569782897595,8.175622929721267e-05,NVO,GLP-1,Ozempic + Wegovy
+0,249,,,0.0,NVDA,AI / semis,GPU platform for AI training
+0,252,,,0.0,LLY,GLP-1,Mounjaro + Zepbound
+0,252,,,0.0,SMCI,AI / semis,AI server OEM
+1,252,1.0,-0.06092803187515567,-0.0,AVGO,AI / semis,Custom AI silicon + networking
+1,252,1.0,0.006662312214238941,0.0,VST,Nuclear,Nuclear utility + AI data-center power
+1,252,1.0,0.016666666666666684,0.0,RKLB,Space,Small-launch + space systems
+1,252,1.0,-0.03636363636363619,-0.0,QBTS,Quantum,Annealing quantum
+1,252,1.0,-0.036079317978427755,-0.0,COIN,Bitcoin proxies,US crypto exchange
+1,252,1.0,-0.2666666666666667,-0.0,MSTR,Bitcoin proxies,Bitcoin treasury company
+2,252,0.5,-0.005562966915688375,-2.2075265538445932e-05,IONQ,Quantum,Trapped-ion quantum computer
+3,252,0.6666666666666666,-0.1117570120622002,-0.00044348020659603266,RGTI,Quantum,Superconducting qubits
+2,252,0.0,-0.07848041792377418,-0.0006228604597124935,MARA,Bitcoin proxies,Bitcoin miner
+2,249,0.0,-0.09242643974018301,-0.0007423810420898233,AMD,AI / semis,AI accelerator challenger
