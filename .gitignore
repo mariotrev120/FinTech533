@@ -1,3 +1,15 @@
 /.quarto/
 .env
 *.env
+
+# Local only, not committed
+README.md
+TWS_CONNECTION_HELP.md
+FinTech533/README.md
+FinTech533/Homeworks/HW1/
+FinTech533/Homeworks/HW2/
+FinTech533/Homeworks/HW3/
+FinTech533/Homeworks/HW4/
+FinTech533/Demo.py
+FinTech533/main.py
+FinTech533/Homeworks/.gitignore
