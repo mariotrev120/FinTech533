@@ -126,22 +126,27 @@ def _flush_line(sym: str, state: str) -> None:
 
 
 def _fetch_one(sb, symbol: str, cid: int, end_dt: str, duration: str,
-               sec_type: str = "STK", exchange: str = "SMART") -> pd.DataFrame:
+               sec_type: str = "STK", exchange: str = "SMART",
+               timeout: int = 30) -> pd.DataFrame:
     c = sb.Contract({"symbol": symbol, "secType": sec_type, "exchange": exchange, "currency": "USD"})
     what = "Trades" if sec_type == "STK" else "TRADES"
     # IND contracts sometimes reject whatToShow=Trades. Try TRADES uppercase; if fail, use MIDPOINT.
+    # timeout default bumped from shinybroker's 3s to 30s — IBKR needs more time for explicit
+    # past-dated historical queries; the 3s default silently returns None and raises here.
     try:
         r = sb.fetch_historical_data(
             contract=c, endDateTime=end_dt, durationStr=duration,
             barSizeSetting="1 day", whatToShow=what,
-            host=HOST, port=PORT, client_id=cid,
+            host=HOST, port=PORT, client_id=cid, timeout=timeout,
         )
     except Exception:
         r = sb.fetch_historical_data(
             contract=c, endDateTime=end_dt, durationStr=duration,
             barSizeSetting="1 day", whatToShow="MIDPOINT",
-            host=HOST, port=PORT, client_id=cid,
+            host=HOST, port=PORT, client_id=cid, timeout=timeout,
         )
+    if r is None or not isinstance(r, dict) or "hst_dta" not in r:
+        raise RuntimeError(f"empty response (sb returned {type(r).__name__})")
     d = r["hst_dta"].copy()
     d["timestamp"] = pd.to_datetime(d["timestamp"])
     for col in ["open", "high", "low", "close", "volume"]:

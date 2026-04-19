@@ -1,7 +1,7 @@
 ---
 title: "HW5: Keltner Squeeze Breakout, Expanding Walk-Forward, Exogenous ML, Hoeffding Regime Monitor"
 pagetitle: "HW5 Keltner Squeeze Walk-Forward | FinTech533"
-subtitle: "Three-pillar engine refit at every fold boundary. Long+short. Net of real trading costs and taxes. 2022-2025 out-of-sample across a survivorship-clean 22-name universe."
+subtitle: "Three-pillar engine refit at every fold boundary. Long+short. Net of real trading costs and taxes. 2022-2025 out-of-sample across a survivorship-clean 50-name universe."
 format:
   html:
     toc: true
@@ -13,7 +13,7 @@ execute:
   message: false
 ---
 
-> Historical backtest (no orders placed). Daily OHLCV bars pulled from IBKR TWS for 22 equities + 7 macro indices + 7 sector ETFs, all spanning 5 years (2021-01-01 to present). The strategy is refit at every fold boundary so no future data leaks into any fold's training.
+> Historical backtest (no orders placed). Daily OHLCV bars pulled from IBKR TWS for 50 equities + 7 macro indices + 7 sector ETFs, all spanning 5 years (2021-01-04 to 2026-04-17). The strategy is refit at every fold boundary so no future data leaks into any fold's training.
 
 ```{python}
 # | include: false
@@ -86,7 +86,7 @@ Training sets **expand** (never throw away history), so Fold 4's LR is trained o
 
 ## Asset Selection: Survivorship-Clean Universe
 
-**Selection rule, committed ex-ante before any OOS result was viewed:** *"Top 50 US equities by Jan 1, 2021 dollar volume that traded continuously from Jan 1, 2020 through Apr 17, 2026, excluding ETFs and ADRs."* The rule is mechanical: a pre-dated liquidity ranking on a cutoff (Jan 1, 2021) that precedes the test windows, combined with a survivorship filter. The intended universe was 50 names; **22 were successfully retrieved from IBKR TWS before an API session disruption on Apr 17 2026.** The retrieved subset (14 thematic survivors plus 8 US mega-caps that completed before the cutoff) preserves the mechanical selection criterion (liquidity-ranked, survivorship-filtered, no ADRs) and is the universe used throughout this analysis. ADRs NVO and CCJ cross-listing are explicitly excluded per the rule. The full 50-name list is retained in the codebase for replication when TWS data access is stable. Each name is scored by **Breakout Quality Score** per fold:
+**Selection rule, committed ex-ante before any OOS result was viewed:** *"Top 50 US equities by Jan 1, 2021 dollar volume that traded continuously from Jan 1, 2020 through Apr 17, 2026, excluding ETFs and ADRs."* The rule is mechanical: a pre-dated liquidity ranking on a cutoff (Jan 1, 2021) that precedes the test windows, combined with a survivorship filter. The list blends 14 US-primary thematic names (AI/semis, nuclear, Bitcoin proxies, defense, GLP-1) with 36 large-cap US primary listings across financials, tech, healthcare, energy, consumer, payments, and media. ADRs are excluded by rule. Each name is scored by **Breakout Quality Score** per fold:
 
 $$
 \mathrm{BQS} = \left( \frac{n}{N} \right) \cdot (1 - f_{\text{false}}) \cdot \operatorname{med}(\Delta P_{10})
@@ -163,6 +163,8 @@ Vestal's critique: a model trained on a ticker's own history is just learning it
 
 **Per-fold refit.** Every feature lookup uses the `entry_date - 1` value. StandardScaler is `fit` on training-fold features only, then `transform`ed on the test fold. Logistic Regression trained with `class_weight='balanced'`, `liblinear` solver, `C=1`. Trained LR's `predict_proba` attached to every trade for transparency.
 
+**Why LR is annotation, not a gate.** Each fold's LR trains on 10-30 labeled breakouts (the strict signal is that rare). A 0.50-threshold gate trained on that sample size would drop roughly half of an already underpowered OOS stream with high variance in which half gets dropped. Gating would make the pooled PnL more noisy, not less. The defensible role for this LR is diagnostic: coefficient-sign stability across folds tells you which exogenous feature directions generalize. A larger-N version of this study (more years or intraday bars) is where LR should be promoted to a gate or a sizing signal.
+
 ### LR coefficient stability table
 
 Consistent sign and magnitude across folds is a signal that the feature is doing real work. Sign flips across folds indicate noise.
@@ -181,7 +183,7 @@ if not lr_coef.empty:
 
 ## Hoeffding Regime Monitor (Egger & Vestal 2025)
 
-Two one-sided monitors run on the **concatenated OOS trade stream** across 3 testable folds (21 trades pooled; Fold 4 has 0 candidates because 2025-YTD is ~51 bars, shorter than the 20-bar BB/KC warmup). Under H0 (the pooled training-year regime persists), Hoeffding's Inequality bounds the probability of observing an underperformance as large as the realized `mu - X̄`:
+Two one-sided monitors run on the **concatenated OOS trade stream** across all 4 folds (44 trades pooled). Under H0 (the pooled training-year regime persists), Hoeffding's Inequality bounds the probability of observing an underperformance as large as the realized `mu - X̄`:
 
 $$
 P(\bar X - \mu \ge t \mid H_0) \le \exp\!\left(\frac{-2 t^2 N_{\text{eff}}}{(b - a)^2}\right)
@@ -365,6 +367,50 @@ if HAS and len(trades) > 0:
     fig.show()
 ```
 
+## Block-Bootstrap Confidence Intervals
+
+A point estimate of net PnL on 44 OOS trades is a single-roll realization. A **block bootstrap** (block size 3, respecting local trade-outcome autocorrelation) resamples the pooled stream 10,000 times and reports the 95% CI on each metric — turning "point estimate" into "range consistent with the observed trade sequence".
+
+```{python}
+# | echo: false
+from pathlib import Path
+boot_path = Path('../Homeworks/HW5/bootstrap_ci.csv')
+if boot_path.exists():
+    b = pd.read_csv(boot_path, index_col=0)
+    fmt = {
+        'net_pnl':      lambda v: f"${v:+,.0f}",
+        'win_rate':     lambda v: f"{v*100:.1f}%",
+        'avg_return':   lambda v: f"{v*100:+.2f}%",
+        'sharpe_trade': lambda v: f"{v:+.2f}",
+    }
+    pretty_name = {
+        'net_pnl':      'Pooled net PnL',
+        'win_rate':     'Win rate',
+        'avg_return':   'Avg return per trade',
+        'sharpe_trade': 'Sharpe (per trade)',
+    }
+    rows = []
+    for metric in ['net_pnl', 'win_rate', 'sharpe_trade', 'avg_return']:
+        if metric not in b.index: continue
+        f = fmt[metric]
+        rows.append([
+            pretty_name[metric],
+            f(float(b.loc[metric, 'point'])),
+            f(float(b.loc[metric, 'ci_2.5%'])),
+            f(float(b.loc[metric, 'median'])),
+            f(float(b.loc[metric, 'ci_97.5%'])),
+        ])
+    tt = pd.DataFrame(rows, columns=['Metric', 'Observed', '2.5%', 'Bootstrap median', '97.5%'])
+    header = dict(values=list(tt.columns), fill_color='#0d47a1', font_color='white', align='left')
+    cells  = dict(values=[tt[c] for c in tt.columns], align='left',
+                  fill_color=[['#fafafa' if i%2 else 'white' for i in range(len(tt))]])
+    fig = go.Figure(data=[go.Table(header=header, cells=cells)])
+    fig.update_layout(height=140 + 30*len(tt), margin=dict(l=0,r=0,t=10,b=0))
+    fig.show()
+```
+
+The observed pooled net PnL sits inside a 95% interval that spans both sides of zero: the data do not distinguish the strategy's realized PnL from noise on this sample size.
+
 ## Slippage Sensitivity
 
 Stitched OOS rerun at 5 / 10 / 15 bps per side. A strategy that degrades gracefully is execution-robust; one that collapses at 15 bps is spread-dependent.
@@ -395,15 +441,37 @@ if not slip_sens.empty:
 - **Regulatory fees (sells).** SEC Section 31 at 0.00278% of notional + FINRA TAF at `$0.000166/share` capped at `$8.30`.
 - **Short-borrow.** 3% annualized linear accrual on notional × hold_days / 252.
 - **Taxes.** Short-term capital gains at 30%, applied to period aggregate net positive PnL. Losses offset gains within the period. No carry-forwards modeled.
-- **Position sizing.** Fixed `$10,000` notional per trade, whole shares only (rounded down), one open position per ticker at a time. Strategies run in parallel across 22 tickers.
-- **ML.** StandardScaler fit on each fold's training features only. Logistic Regression with `class_weight='balanced'`, `solver='liblinear'`, `C=1`. Threshold at `MIN_PROBABILITY = 0.50` (frozen, never retuned across folds). Features strictly exogenous (Vestal's Law).
+- **Position sizing.** Fixed `$10,000` notional per trade, whole shares only (rounded down), one open position per ticker at a time. Strategies run in parallel across 50 tickers.
+- **ML.** StandardScaler fit on each fold's training features only. Logistic Regression with `class_weight='balanced'`, `solver='liblinear'`, `C=1`. Threshold at `MIN_PROBABILITY = 0.50` is the Bayes-optimal decision under equal misclassification cost; it is frozen by design (not retuned per fold). LR probabilities are recorded on every trade as annotation; the equity curve and all artifacts reflect every strict-signal trade without LR gating. Features strictly exogenous (Vestal's Law).
+
+## Strategy Diagnostics
+
+The headline is a null (pooled net -$2,571 on 44 trades, 95% bootstrap CI straddles zero). The interesting questions are *why* the nominal edge didn't materialize and *why* only 28 of 50 names ever fired.
+
+### Realized reward-to-risk is 1.1:1, not the nominal 2:1
+
+Exit structure is **+4 × ATR** profit target versus **−2 × ATR** stop, i.e. nominal 2:1. Realized across the 44 OOS trades:
+
+| Exit type | n | Avg return | Avg net PnL | Avg hold (days) |
+|---|---:|---:|---:|---:|
+| profit_target | 10 | +12.96% | +$1,290 | 8.9 |
+| stop_loss | 21 | −8.04% | −$797 | 7.3 |
+| timeout | 13 | +0.98% | +$98 | 20.0 |
+
+Winners average +$772, losers average −$690 — realized reward-to-risk collapses from nominal 2.0 to **1.12**. With 43.2% win rate, a 1.12:1 realized structure is ≈ `0.43 × 1.12 - 0.57 × 1.00 = -0.09` units per trade. Negative expectancy, matching the observed net loss.
+
+The mechanism is the **timeout bucket**. 30% of trades never reach either exit band within the 20-day clock and close near entry. Nominal 2:1 assumes every trade resolves at the bands; a third of the sample doesn't, and those near-flat exits dilute the reward side while the risk side still pays stop distances on the 48% that stop out. The three natural responses — a dynamic (ATR-scaled) timeout, a time-in-trade exit that takes partial profits, or ATR-adaptive stops that widen when VIX expands so winners don't wash out — are beyond the frozen-design parameter set of this study.
+
+### 28/50 firing rate reflects the 5-condition intersection
+
+Every trade requires (1) BB inside KC the prior bar, (2) BB expands outside KC on the fire bar, (3) close pierces the corresponding KC band, (4) volume ≥ 1.3× its 20-day average, and (5) ADX(14) ≥ 20. The joint probability of all five is low by design. Five-year trade counts concentrate in higher-vol names (LEU 3, JPM 3, ABBV 3; RIOT, MARA, MSFT, META each 2); mega-caps with smooth trending or steady consolidation structures (AAPL, AMZN, MSFT-size, V, MA, KO, WMT) rarely generate the compressed-then-released BB/KC geometry that the rule requires. **22 of 50 names never fired a qualified signal in the full 5-year window.** That is consistent with the strategy being a selection filter for vol-regime transitions rather than a broad equity signal — a design consequence, not an implementation gap.
 
 ## Discussion
 
-**The stitched OOS result across three testable folds shows a strong regime-dependence pattern:** the Keltner squeeze worked in 2023 (87.5% win rate, +$8,378 net across 8 trades) and failed in both 2022 (20% win rate, -$6,164) and 2024 (25%, -$2,776). Pooled net: -$562 on 21 trades. This is the expected shape of an honest walk-forward on a trend-continuation strategy. The signal has real edge when volatility is expanding out of compression with macro tailwinds (2023's disinflation rally), and fails in mean-reverting chop. The LR coefficient stability table identifies which exogenous features carry predictive weight across regimes; of particular note is `spy_ret_20d` staying positive and comparable in magnitude across all three training folds, suggesting the strategy's generalizable edge is more about *when* to engage the signal than about the signal itself.
+**Pooled OOS result: 44 trades, 43.2% win rate, net −$2,571.** Fold 1 (2022) −$5,116 on 6 trades, Fold 2 (2023) +$8,133 on 16 trades, Fold 3 (2024) −$3,802 on 16 trades, Fold 4 (2025) −$1,786 on 6 trades. The block-bootstrap 95% CI on pooled PnL spans roughly ±$11k and brackets zero; the win-rate CI (29.5% to 59.1%) brackets a coin flip. On this sample size, the strategy's realized PnL is statistically indistinguishable from random. The headline is a rigorously-framed null, not a positive result, and the correct read is that 44 trades pooled across four walk-forward folds cannot separate a real edge from noise at any reasonable confidence level.
 
-The engineering change that matters most here is the **expanding walk-forward refit**. A single frozen split is pedagogically unsatisfying: the LR never adapts to new regimes, and a ~10-trade OOS sample gives Hoeffding no room to tighten. Four folds produce a multi-year OOS stream, let the Hoeffding monitor's `1/sqrt(N)` convergence actually move, and make the LR coefficient table a real **regime-drift diagnostic** rather than a 14-feature snapshot. The BQS drift table plays the same role for ticker selection: same top-5 across folds means the breakout regime is persistent; leaderboard churn means BQS is reactive to recent vol and needs to be disclosed as such.
+One fold (2023) paid positively. That is one observation, not a regime claim — Fold 2 is the single out-performer in a four-fold test, which is exactly the distribution a null would also produce. Reading any macro narrative into it requires more folds or more tickers, not more prose. What the per-fold numbers *do* support is the structural claim from the diagnostic above: winners that reach the profit target are consistent with nominal R:R (+12.96% avg at +4 ATR), but the 30% timeout bucket and 48% stop rate together compress realized reward-to-risk to 1.12:1 — that is the mechanical reason the pooled result is negative, and it is independent of the specific test years.
 
-**Claims kept bounded.** This is a small-sample backtest of a low-frequency setup on 22 names. With 21 OOS trades pooled across the stream, the Hoeffding bounds are meaningful but still loose. They would tighten further with longer history or a wider universe. The strategy's edge (if any) is in **participation** and **regime**, not in cross-sectional alpha: Vestal's exogenous features decide whether the macro tape is inviting a squeeze to resolve into trend, and the Hoeffding monitor decides whether yesterday's regime still holds.
+**LR diagnostic value.** With 10-30 training labels per fold, individual LR coefficients are not measurements. Sign stability across folds is the defensible read; magnitudes should be treated as noise. The BQS drift table plays the same role for ticker selection: stable top names = persistent breakout regime; churn = BQS is reactive to recent vol.
 
-**Natural extensions for the final project.** Top-3 BQS portfolio (trade only the top-ranked names in each fold's updated BQS table) with correlation-aware sizing. Kelly position sizing conditional on LR probability. Monte-Carlo block-bootstrap of the stitched OOS stream to place confidence intervals on pooled Sharpe. Regime-adaptive ATR multipliers (widen stops when VIX is elevated, tighten in quiet regimes).
+**Where this would be strengthened.** (i) Longer history with a pre-declared liquidity cutoff in an earlier year to stress regime stationarity across COVID and 2018; (ii) intraday bars to multiply trade-years by 6-16× and tighten Hoeffding; (iii) ATR-adaptive or dynamic exits to close the timeout-bucket leak without re-tuning the base signal; (iv) promoting LR from annotation to a sizing signal (not a hard gate) once the training set is large enough for a stable threshold.
